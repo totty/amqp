@@ -169,20 +169,6 @@ class MQ
       if @body.length >= @header.size
         @header.properties.update(@method.arguments)
         @consumer.receive @header, @body if @consumer
-
-        # call the return listener on basic.return
-        # when doing this in the segment assembly below we lack header and body,
-        # when doing this after the segment assembly Frame::Body will have cleared
-        # the body
-        if @method.is_a?(Protocol::Basic::Return)
-          MQ.basic_return :channel => channel,
-			              :reply_code => @method.reply_code,
-			              :reply_text => @method.reply_text,
-			              :exchange => @method.exchange,
-			              :routing_key => @method.routing_key,
-			              :properties => @header.properties,
-			              :body => @body
-        end
         @body = @header = @consumer = @method = nil
       end
 
@@ -234,9 +220,6 @@ class MQ
         else
           MQ.error "Basic.GetEmpty for invalid consumer"
         end
-
-      when Protocol::Basic::Return
-        @method = method
 
       when Protocol::Channel::Close
         raise Error, "#{method.reply_text} in #{Protocol.classes[method.class_id].methods[method.method_id]} on #{@channel}"
@@ -775,19 +758,6 @@ class MQ
     self
   end
 
-  # Define a data hashmap and callback block to be executed on all
-  # basic.return messages received. This is the same as the
-  # ReturnListener[http://www.rabbitmq.com/releases/rabbitmq-java-client/v1.5.1/rabbitmq-java-client-javadoc-1.5.1/com/rabbitmq/client/ReturnListener.html] in the official RabbitMQ Java API but is not
-  # scoped to a channel. Data is a hashmap equivalent to the
-  # Java listeners method signature plus the channel number.
-  def self.basic_return data = nil, &blk
-    if blk
-      @return_callback = blk
-    else
-      @return_callback.call(data) if @return_callback and data
-    end
-  end
-										
   # Returns a hash of all the exchange proxy objects.
   #
   # Not typically called by client code.
