@@ -76,11 +76,47 @@ module AMQP
   # block. See the code examples in MQ for details.
   #
   def self.start *args, &blk
-    EM.run{
+    EM.run {
+      puts " == debug == EM.run start"
       @conn ||= connect *args
       @conn.callback(&blk) if blk
+      puts " == debug == EM.run fin"
       @conn
     }
+  end
+  
+  def self.vstart *args, &blk
+    opts = Hash[*args.collect]
+    opts[:hosts].shuffle.each do |host_port|
+      puts ""
+      puts " == debug == >>>>> == "
+      puts " == debug == host:port / #{host_port}"
+      host, port = host_port.split ":"
+      opts[:host] = host
+      opts[:port] = port if port
+      
+      begin
+        puts " == debug == EM.begin"
+        #start opts, &blk
+        
+        #EM.error_handler { |e|
+        #  puts "Error raised during event loop: #{e.message}"
+        #  EM.stop_event_loop
+        #}
+        EM.run {
+          _start opts, &blk
+        }
+      rescue => e
+        puts "EM.error(#{e.class}) : #{e}"
+        @conn = nil
+      else
+        puts "EM.success : #{host_port}"
+        break
+      end
+      puts " == debug == <<<<< == "
+      puts ""
+    end
+    @conn
   end
 
   class << self
@@ -106,5 +142,13 @@ module AMQP
 
       yield
     end
+  end
+  
+  private
+
+  def self._start *args, &blk
+    @conn ||= connect *args
+    @conn.callback(&blk) if blk
+    @conn
   end
 end
