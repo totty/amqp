@@ -77,10 +77,8 @@ module AMQP
   #
   def self.start *args, &blk
     EM.run {
-      puts " == debug == EM.run start"
       @conn ||= connect *args
       @conn.callback(&blk) if blk
-      puts " == debug == EM.run fin"
       @conn
     }
   end
@@ -88,15 +86,12 @@ module AMQP
   def self.vstart *args, &blk
     opts = Hash[*args.collect]
     opts[:hosts].shuffle.each do |host_port|
-      puts ""
-      puts " == debug == >>>>> == "
-      puts " == debug == host:port / #{host_port}"
       host, port = host_port.split ":"
       opts[:host] = host
       opts[:port] = port if port
       
       begin
-        puts " == debug == EM.begin"
+        puts "AMQP.run : Try connect to server #{host_port}"
         #start opts, &blk
         
         #EM.error_handler { |e|
@@ -107,14 +102,11 @@ module AMQP
           _start opts, &blk
         }
       rescue => e
-        puts "EM.error(#{e.class}) : #{e}"
+        puts "AMQP.err : #{e}"
         @conn = nil
       else
-        puts "EM.success : #{host_port}"
         break
       end
-      puts " == debug == <<<<< == "
-      puts ""
     end
     @conn
   end
@@ -151,4 +143,10 @@ module AMQP
     @conn.callback(&blk) if blk
     @conn
   end
+  
+  def self.log *args
+    return unless MQ.logging
+    pp args
+    puts
+  end  
 end
